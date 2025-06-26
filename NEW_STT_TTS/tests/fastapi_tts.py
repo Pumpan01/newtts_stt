@@ -28,8 +28,9 @@ app = FastAPI()
 # ---------------------------
 # 📦 Model สำหรับ POST API
 class Item(BaseModel):
-    text: str                         # ข้อความที่จะพูด
-    emotion: str = "neutral"           # อารมณ์ของเสียง (ค่าปกติ neutral)
+    text: str
+    emotion: str = "neutral"   # ✅ เพิ่ม emotion
+    gesture: str = "neutral_face"  # ✅ เพิ่ม gesture
 
 
 # ---------------------------
@@ -54,7 +55,12 @@ async def speak(item: Item):
     if not item.text:
         raise HTTPException(status_code=400, detail="กรุณาระบุพารามิเตอร์ text")
 
-    intent = run_tts_pipeline(item.text)   # รัน TTS Pipeline
+    print("🔊 ข้อความที่จะพูด:", item.text)
+    print("😊 อารมณ์:", item.emotion)
+    print("🕺 ท่าทาง:", item.gesture)
+
+    # ✅ พูดเฉพาะ text (ซึ่งคือ answer)
+    intent = run_tts_pipeline(item.text)
 
     return {
         "message": f"TTS for \"{item.text}\" finished",

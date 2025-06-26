@@ -66,42 +66,46 @@ def wait_for_silence(vad_aggressiveness=2, silence_duration=3, sample_rate=16000
 def listen_and_send(stop_event):
     speech_config = speechsdk.SpeechConfig(subscription=AZURE_SPEECH_KEY, region=AZURE_REGION)
     speech_config.speech_recognition_language = "th-TH"
+    speech_config.set_property(
+        speechsdk.PropertyId.SpeechServiceResponse_PostProcessingOption, "TrueText")  # ✅ ใส่จุด/เว้นวรรคอัตโนมัติ
+
     audio_config = speechsdk.audio.AudioConfig(use_default_microphone=True)
 
     recognizer = speechsdk.SpeechRecognizer(speech_config=speech_config, audio_config=audio_config)
 
-    while not stop_event.is_set():   # ทำงานจนกว่าจะมีคำสั่งหยุด
-        full_text = []
+    def recognized(evt):
+        if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
+            text = evt.result.text.strip()
+            if text:
+                write_log(f"📝 ได้ข้อความ: {text}")
+                try:
+                    response = requests.post(API_ASKDAMO, json={"question": text})
+                    response.raise_for_status()
+                    write_log("✅ ส่งข้อความสำเร็จ")
+                except Exception as e:
+                    write_log(f"❌ ส่ง API ผิดพลาด: {e}")
 
-        def recognized(evt):
-            if evt.result.reason == speechsdk.ResultReason.RecognizedSpeech:
-                write_log(f"📝 ได้ข้อความ: {evt.result.text}")
-                full_text.append(evt.result.text)
+    def session_stopped(evt):
+        write_log("🛑 หยุดฟัง")
+        stop_event.set()
 
-        recognizer.recognized.connect(recognized)
+    def canceled(evt):
+        write_log(f"❌ การฟังยกเลิก: {evt}")
+        stop_event.set()
 
-        write_log("🎙️ เปิดไมค์ (พูดจนเงียบ 2 วิ)")
-        recognizer.start_continuous_recognition()
+    recognizer.recognized.connect(recognized)
+    recognizer.session_stopped.connect(session_stopped)
+    recognizer.canceled.connect(canceled)
 
-        wait_for_silence(silence_duration=2)  # ฟังจนเงียบ 2 วิ
+    write_log("🎙️ เริ่มฟัง...")
 
-        recognizer.stop_continuous_recognition()
-        recognizer.recognized.disconnect_all()
+    recognizer.start_continuous_recognition()
 
-        text = ' '.join(full_text).strip()
-
-        if text:
-            write_log(f"📨 ส่งข้อความไป API: {text}")
-            try:
-                response = requests.post(API_ASKDAMO, json={"question": text})
-                response.raise_for_status()
-                write_log("✅ ส่งสำเร็จ รอรอบใหม่...")
-            except Exception as e:
-                write_log(f"❌ ส่ง API ผิดพลาด: {e}")
-        else:
-            write_log("⚠️ ไม่มีข้อความ")
-
+    while not stop_event.is_set():
         time.sleep(0.1)
+
+    recognizer.stop_continuous_recognition()
+    recognizer.recognized.disconnect_all()
 
 
 # ---------- เริ่มเปิดกล้อง ----------
