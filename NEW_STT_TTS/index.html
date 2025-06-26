@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Audio2Face TTS</title>
+</head>
+<body>
+  <h2>พูดด้วย Audio2Face</h2>
+
+  <input type="text" id="text" placeholder="พิมพ์ข้อความที่นี่" style="width: 300px;"><br><br>
+
+  <label for="emotion">เลือกอารมณ์: </label>
+  <select id="emotion">
+    <option value="neutral">ธรรมดา (Neutral)</option>
+    <option value="happy">มีความสุข (Happy)</option>
+    <option value="sad">เศร้า (Sad)</option>
+    <option value="angry">โกรธ (Angry)</option>
+    <option value="excited">ตื่นเต้น (Excited)</option>
+    <option value="fear">กลัว (Fear)</option>
+  </select><br><br>
+
+  <button onclick="sendText()">พูดเลย</button>
+
+  <script>
+    function sendText() {
+      const text = document.getElementById("text").value;
+      const emotion = document.getElementById("emotion").value;
+  
+      const payload = { text, emotion };
+      console.log("📦 JSON ที่จะส่งไป:", JSON.stringify(payload));  // ✅ ดู JSON ที่จะส่ง
+  
+      fetch("http://192.168.1.171:5000/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        console.log("✅ response:", data); // ✅ ดู response ที่ได้กลับมา
+        alert(data.message);
+      })
+      .catch(err => {
+        console.error("❌ Error:", err);  // ✅ ดู error ละเอียดใน console
+        alert("❌ Error: " + err);
+      });
+    }
+  </script>
+  
+</body>
+</html>
+
+
